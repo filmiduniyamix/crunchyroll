@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crunchyroll Poster Fetcher 🍓</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-6">
+  <h1 class="text-3xl font-bold mb-6 text-orange-400 text-center">
+    🍥 Crunchyroll Poster Fetcher
+  </h1>
+
+  <div class="w-full max-w-xl">
+    <input
+      id="urlInput"
+      type="text"
+      placeholder="Paste Crunchyroll URL here..."
+      class="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-orange-500"
+    />
+    <button
+      onclick="fetchPoster()"
+      class="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white p-3 rounded-lg font-semibold transition"
+    >
+      Fetch Poster
+    </button>
+  </div>
+
+  <div id="result" class="mt-8 w-full max-w-3xl"></div>
+
+  <script>
+    async function fetchPoster() {
+      const url = document.getElementById("urlInput").value.trim();
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = "<p class='text-gray-400'>Fetching data...</p>";
+
+      try {
+        const cid = url.split("/")[4];
+        if (!cid) throw new Error("Invalid Crunchyroll URL");
+
+        // Step 1: Get bearer token
+        const tokenRes = await fetch("https://www.crunchyroll.com/auth/v1/token", {
+          method: "POST",
+          headers: { Authorization: "Basic Y3Jfd2ViOg==" },
+          body: new URLSearchParams({ grant_type: "client_id" }),
+        });
+
+        const tokenData = await tokenRes.json();
+        const bearer = tokenData.access_token;
+
+        // Step 2: Fetch series data
+        const res = await fetch(
+          `https://www.crunchyroll.com/content/v2/cms/series/${cid}?locale=en-US`,
+          {
+            headers: { Authorization: `Bearer ${bearer}` },
+          }
+        );
+
+        const data = await res.json();
+        const info = data.data[0];
+
+        const title = `${info.title} - ${info.series_launch_year}`;
+        const portrait = info.images.poster_tall[0].slice(-1)[0].source;
+        const landscape = info.images.poster_wide[0].slice(-1)[0].source;
+
+        resultDiv.innerHTML = `
+          <div class="bg-gray-800 rounded-2xl p-5 shadow-xl">
+            <h2 class="text-2xl font-semibold mb-3 text-center text-orange-300">${title}</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="text-center">
+                <img src="${portrait}" alt="Poster" class="rounded-xl w-full object-cover" />
+                <a href="${portrait}" download class="mt-2 inline-block text-sm text-orange-400 underline">Download Portrait</a>
+              </div>
+              <div class="text-center">
+                <img src="${landscape}" alt="Poster" class="rounded-xl w-full object-cover" />
+                <a href="${landscape}" download class="mt-2 inline-block text-sm text-orange-400 underline">Download Landscape</a>
+              </div>
+            </div>
+          </div>`;
+      } catch (err) {
+        resultDiv.innerHTML = `<p class='text-red-400 text-center'>❌ Error: ${err.message}</p>`;
+      }
+    }
+  </script>
+</body>
+    </html>
